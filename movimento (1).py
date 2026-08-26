@@ -25,10 +25,10 @@ st.header("1. Autenticação automática")
 
 token_url = "https://mingle-sso.inforcloudsuite.com:443/US45PBYRE7XKA5QB_PRD/as/token.oauth2"
 
-client_id = "US45PBYRE7XKA5QB_PRD~nauj2rSlHVtfc9RlyE25a0k6-g4pUmjWofbM3dhh4HA"
-client_secret = "Gd9gXitxh7y98s-mNqqhLVAjGAnOk6XXNHO01Lpu8GmA5qpqe-pHr7zDRUlSfmt5uWUSF4ad0UkGi5vqKCOA5A"
-username = "US45PBYRE7XKA5QB_PRD#9xKRKDfu-0vgqFwTtq0qcDdhPNQQxMAvbgV6JaGx4QjMTz7P-BNkPQ8aMTaM2mpKdrp38IbO-POTjZxAZyhjLw"
-password = "suZgOXrUA1IXP0_tooE0_uz5ifLQuHAg51_AWsWBCnA0NQO6daybIBCXR7MklJz5i3lHHtYebDq5e1jA6BgVCg"
+client_id = st.secrets("ci") 
+client_secret = st.secrets("cs") 
+username = st.secrets("saak") 
+password = st.secrets("sask")
 
 token_payload = {
     "grant_type": "password",
