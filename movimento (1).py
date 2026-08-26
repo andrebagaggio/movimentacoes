@@ -25,10 +25,10 @@ st.header("1. Autenticação automática")
 
 token_url = "https://mingle-sso.inforcloudsuite.com:443/US45PBYRE7XKA5QB_PRD/as/token.oauth2"
 
-client_id = st.secrets("ci") 
-client_secret = st.secrets("cs") 
-username = st.secrets("saak") 
-password = st.secrets("sask")
+client_id = st.secrets["ci"] 
+client_secret = st.secrets["cs"] 
+username = st.secrets["saak"] 
+password = st.secrets["sask"]
 
 token_payload = {
     "grant_type": "password",
