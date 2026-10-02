@@ -18,6 +18,56 @@ DEFAULT_FROMID = " "  # espaço literal
 st.set_page_config(page_title="Movimentação de Estoque por SKU", layout="wide")
 st.title("📦 Movimentação de Estoque por SKU")
 
+
+# ------------------------------------------------------------------
+# FUNÇÃO UNIVERSAL DE CONVERSÃO NUMÉRICA
+# ------------------------------------------------------------------
+def parse_numero(valor):
+    """
+    Converte qualquer formato numérico para float, independente da
+    configuração regional do usuário. Retorna None se vazio ou inválido.
+
+    Exemplos:
+        12.00000      -> 12.0
+        10,50000      -> 10.5
+        10.50000      -> 10.5
+        2,323.00000   -> 2323.0
+        2.323,00000   -> 2323.0
+        1.234.567     -> 1234567.0
+        1,234,567     -> 1234567.0
+    """
+    if valor is None:
+        return None
+
+    s = str(valor).strip().replace(" ", "").replace("\u00a0", "")
+    if not s or s.lower() in ("nan", "none", "nat"):
+        return None
+
+    tem_ponto = "." in s
+    tem_virgula = "," in s
+
+    if tem_ponto and tem_virgula:
+        # o ÚLTIMO separador que aparece é o decimal
+        if s.rfind(",") > s.rfind("."):
+            s = s.replace(".", "").replace(",", ".")  # 2.323,00000
+        else:
+            s = s.replace(",", "")  # 2,323.00000
+    elif tem_virgula:
+        if s.count(",") > 1:
+            s = s.replace(",", "")  # 1,234,567 (milhar)
+        else:
+            s = s.replace(",", ".")  # 10,50000 (decimal)
+    elif tem_ponto:
+        if s.count(".") > 1:
+            s = s.replace(".", "")  # 1.234.567 (milhar)
+        # um ponto só: já é decimal (12.00000)
+
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
 # ------------------------------------------------------------------
 # 1. AUTENTICAÇÃO FIXA
 # ------------------------------------------------------------------
@@ -25,9 +75,9 @@ st.header("1. Autenticação automática")
 
 token_url = "https://mingle-sso.inforcloudsuite.com:443/US45PBYRE7XKA5QB_PRD/as/token.oauth2"
 
-client_id = st.secrets["ci"] 
-client_secret = st.secrets["cs"] 
-username = st.secrets["saak"] 
+client_id = st.secrets["ci"]
+client_secret = st.secrets["cs"]
+username = st.secrets["saak"]
 password = st.secrets["sask"]
 
 token_payload = {
@@ -66,7 +116,10 @@ def detectar_coluna(df, candidatos):
 # ------------------------------------------------------------------
 st.header("2. Planilha XLSM")
 
-planilha_file = st.file_uploader("Planilha .xlsm (abas: BIPAGEM e SALDOS)", type=["xlsm","xlst","xlsx","xls","xltx"])
+planilha_file = st.file_uploader(
+    "Planilha .xlsm (abas: BIPAGEM e SALDOS)",
+    type=["xlsm", "xlst", "xlsx", "xls", "xltx"],
+)
 
 df_pedido = None
 df_estoque = None
@@ -160,18 +213,12 @@ if planilha_file is not None:
 # ------------------------------------------------------------------
 def parse_saldo(serie_bruta: pd.Series) -> pd.Series:
     """
-    Converte a coluna de quantidade (formato BR: '1.234,56') para float.
+    Converte a coluna de quantidade para float usando parse_numero
+    (aceita 12.00000, 10,50000, 2,323.00000, 2.323,00000 etc.).
     Valores inválidos/vazios viram 0 em vez de travar o app ou virar NaN
     (NaN em comparações silenciosamente deixa passar qty sem limite).
     """
-    serie = (
-        serie_bruta.astype(str)
-        .str.strip()
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-    )
-    serie_num = pd.to_numeric(serie, errors="coerce")
-    return serie_num.fillna(0.0)
+    return serie_bruta.map(parse_numero).astype(float).fillna(0.0)
 
 
 def montar_alocacoes(df_pedido, df_estoque, cols):
@@ -189,11 +236,11 @@ def montar_alocacoes(df_pedido, df_estoque, cols):
 
         sku = str(sku_raw).strip()
 
-        try:
-            qty_raw = str(pedido_row[cols["qty_pedido"]]).strip().replace(",", ".")
-            qty_necessaria = float(qty_raw)
-        except (ValueError, TypeError):
-            erros_linha.append(f"Linha {i + 2} do pedido: quantidade inválida ('{pedido_row[cols['qty_pedido']]}'), linha ignorada.")
+        qty_necessaria = parse_numero(pedido_row[cols["qty_pedido"]])
+        if qty_necessaria is None:
+            erros_linha.append(
+                f"Linha {i + 2} do pedido: quantidade inválida ('{pedido_row[cols['qty_pedido']]}'), linha ignorada."
+            )
             continue
 
         toid = str(pedido_row[cols["toid"]]).strip()
